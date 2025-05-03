@@ -1,59 +1,82 @@
 # AFE4950 Library for Arduino
 
-An Arduino library designed to interface the Analog Front End (AFE) AFE4950 — an ultra-small, high-precision biomedical sensor — with ESP32, Nordic nRF52840, and compatible Arduino boards. This library simplifies the integration of the AFE4950 for real-time biosignal acquisition, specifically ECG and PPG signals, making it suitable for both prototyping and real-world applications.
+An Arduino-compatible library designed to interface the Analog Front End (AFE) AFE4950 — an ultra-compact, high-precision biomedical acquisition IC — with ESP32, nRF52840, and other microcontrollers. This library enables real-time acquisition of ECG (electrocardiogram) and PPG (photoplethysmogram) signals, making it ideal for both research and embedded healthcare applications.
 
 ## AFE4950 Module
 
-The AFE4950 Module is a versatile development board specifically built to facilitate the usage of the AFE4950 for biomedical applications. It includes:
+The AFE4950 Module is a specialized board built for biosignal acquisition with:
 
-- **High-precision components** for reliable signal acquisition.
-- **Electrostatic discharge (ESD) protection** to prevent damage from electrostatic events.
-- **High-frequency noise filtering elements**, enhancing signal clarity and stability.
+* **High-precision signal chain components**
+* **Electrostatic discharge (ESD) protection**
+* **High-frequency noise filtering (EMI protection)**
 
-### Technical Specifications
+These features ensure robust, clean signal acquisition and improve overall reliability, even in demanding environments.
 
-- **High-precision components** to achieve accurate biosignal acquisition.
-- **ESD protection** to safeguard circuits from electrostatic discharges, ensuring long-term reliability.
-- **Noise filtration** to minimize high-frequency disturbances, making this module a reliable choice for both research and real-world projects.
+> While intended for development, the AFE4950 Module is also suitable for integration into production-ready devices.
 
-> The AFE4950 Module is intended as a development board but is perfectly usable for direct integration into real projects.
+![AFE4950 Module](docs/images/AFE4950_Module.png)
+![Pinout](docs/images/AFE4950_Module_PinOut.png)
 
-![AFE4950 Module](docs/images/AFE4950_Module.png)  
-![Pinout](docs/images/AFE4950_Module_PinOut.png)  
+---
+
+## What’s New in v2.0.0
+
+This version introduces major architectural improvements:
+
+* **Structured ring buffer integration**: Internally implemented circular buffer for efficient, non-blocking sample storage.
+* **Modular ISR handling**: Optional use of `IRAM_ATTR` optimized for ESP32.
+* **Protocol tagging and packetization**: Data packets include headers and sample tags (ECG/PPG identifiers).
+* **Improved object-oriented design**: Allows for better encapsulation and portability.
+
+> **Deprecated**: Functions like `ready()`, `getData()` and `getBytesToSend()` have been removed in favor of `availableBytes()`, `readByte()`, and `readBytes()` for a more efficient pull-based interface.
+
+---
 
 ## Features
 
-- Simultaneous acquisition of single-channel ECG and PPG signals.
-- Configurable sampling frequency.
-- Adjustable FIFO settings, including watermark level, for efficient data handling.
+* Simultaneous acquisition of ECG and PPG in a 3:1 pattern (ECG, ECG, PPG...)
+* Interrupt-driven FIFO readout and SPI transfer
+* Configurable sampling frequency (e.g., 500 Hz ECG / 250 Hz PPG)
+* Clean buffer separation between acquisition and transmission
+* Platform-compatible with ESP32, nRF52840, and other MCUs
+
+---
 
 ## Getting Started
 
-This library is compatible with ESP32 and similar microcontrollers. To begin using the AFE4950 in your project:
+### 1. Install the Library
 
-1. **Download the Library**  
-   Search for library in Arduino library manager.
+Use Arduino Library Manager to search for `AFE4950` and install the latest version.
 
-2. **Include the Library**  
-   Add the following line at the top of your Arduino sketch:
-   
-   ```cpp
-   #include <AFE4950.h>
-   ```
+### 2. Include the Header
 
-3. **Connect the AFE4950 Module**  
-   Follow the pinout diagram above to connect your AFE4950 Module to your microcontroller.
+```cpp
+#include <AFE4950.h>
+```
 
-4. **Initialize and Configure**  
-   Use the example provided to set up and begin data acquisition with the AFE4950.
+### 3. Connect the AFE4950 Module
+
+Follow the pinout diagram to wire up the SPI interface and control lines (RESET, FIFO\_RDY).
+
+### 4. Run an Example
+
+Examples include:
+
+* `RawPacket-ECG-PPG-Streaming.ino`: Streams raw 224-byte data packets
+* `Separated-ECG-PPG-Decoder.ino`: Extracts and prints voltage values for each ECG/PPG sample
+
+---
 
 ## Requirements
 
-- **Arduino IDE 1.8.13 or later**
-- **PlatformIO** (optional, for advanced development)
+* **Arduino IDE >= 1.8.13** or **PlatformIO**
+* Compatible hardware (ESP32, nRF52840, STM32, etc.)
+* AFE4950 Module with SPI wiring and signal interface
 
 ## Documentation
 
-Comprehensive documentation for each function and method is available in the `docs/api.md` file, with additional usage examples in the `examples` folder. 
+* [API Reference](docs/api.md)
+* [Example Use Cases](examples/)
+* [Register Configuration Details](src/Registers.h)
 
-For more information or questions, please contact us at: [jjlondonocarrillo@gmail.com](mailto:jjlondonocarrillo@gmail.com).
+For questions or feedback, contact: [jjlondonocarrillo@gmail.com](mailto:jjlondonocarrillo@gmail.com)

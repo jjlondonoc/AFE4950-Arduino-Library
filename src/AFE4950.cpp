@@ -1,8 +1,17 @@
 #include <AFE4950.h>
 #include <SPI.h>
 
+AFE4950* AFE4950::_afeInstance = nullptr;
 
-AFE4950::AFE4950() {}
+uint8_t AFE4950::_dataBuffer[AFE4950::RING_BUFFER_SIZE];
+
+CircularBuffer AFE4950::_ringBuffer(AFE4950::_dataBuffer, AFE4950::RING_BUFFER_SIZE);
+
+AFE4950::AFE4950()
+{
+    _afeInstance = this;
+}
+
 AFE4950::~AFE4950() {}
 
 // Hardware reset (LOW state in RESETZ pin)
@@ -54,7 +63,7 @@ void AFE4950::switchReadWriteMode(Mode mode) {
 }
 
 void AFE4950::writeSPI(const Register& reg) {
-    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+    SPI.beginTransaction(SPISettings(SPI_FREQ, MSBFIRST, SPI_MODE0));
 
     digitalWrite(_pinCS, LOW);
 
@@ -74,7 +83,7 @@ void AFE4950::writeSPI(const Register& reg) {
 uint32_t AFE4950::readSPI(uint8_t regAddress) {
     uint32_t data = 0;
     if(regAddress != 0x00) {
-        SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+        SPI.beginTransaction(SPISettings(SPI_FREQ, MSBFIRST, SPI_MODE0));
 
         digitalWrite(_pinCS, LOW);
 
@@ -190,7 +199,7 @@ bool AFE4950::configure(
 
     pinMode(_pin_FIFO_RDY, INPUT);
 
-    SPI.begin(_pinSCLK, _pinMISO, _pinMOSI, _pinCS);
+    SPI.begin(); // Begin SPI Bus
 
     delay(1);
 
@@ -224,10 +233,9 @@ void AFE4950::enableCapture() {
         _reg0.data = 0x000040;
         writeRegister(_reg0);
 
-        attachInterruptArg(
+        attachInterrupt(
             digitalPinToInterrupt(_pin_FIFO_RDY),
             dataReadyISR,
-            this,
             RISING
         );
 
@@ -242,60 +250,67 @@ void AFE4950::disableCapture() {
     }
 }
 
-void IRAM_ATTR AFE4950::dataReadyISR(void* arg) {
-    AFE4950* afe = static_cast<AFE4950*>(arg);
-    if(!afe -> _dataReadyFlag) {
-        afe -> _dataReadyFlag = true;
+size_t AFE4950::availableBytes() const
+{
+    return _ringBuffer.size();
+}
+
+bool AFE4950::readByte(uint8_t &b)
+{
+    return _ringBuffer.pop(b);
+}
+
+bool AFE4950::readBytes(uint8_t *dst, size_t len)
+{
+    if(_ringBuffer.size() < len) {
+        // Not enough bytes
+        return false;
     }
+    for(size_t i=0; i < len; i++){
+        _ringBuffer.pop(dst[i]);
+    }
+    return true;
+}
+
+void AFE4950::clear()
+{
+    _ringBuffer.clear();
+}
+
+// For different architectures
+#if defined(ESP32)
+    #pragma message "[AFE4950] ESP32 detected: Using IRAM_ATTR for interrupt stability."
+    void IRAM_ATTR AFE4950::dataReadyISR()
+#else
+    void AFE4950::dataReadyISR()
+#endif
+{
+    if(_afeInstance) _afeInstance->readFifo();
 }
 
 // Prepare buffer with tags
 void AFE4950::copyDataInTxBuff(uint32_t data, uint8_t identifier) {
-    if (_txDataStruct.dataBufferIndex + 4 <= _dataBufferSize) {
-        _txDataStruct.dataBuffer[_txDataStruct.dataBufferIndex++] = data & 0xFF;         // LSB
-        _txDataStruct.dataBuffer[_txDataStruct.dataBufferIndex++] = (data >> 8) & 0xFF; 
-        _txDataStruct.dataBuffer[_txDataStruct.dataBufferIndex++] = (data >> 16) & 0xFF; // MSB
-        _txDataStruct.dataBuffer[_txDataStruct.dataBufferIndex++] = identifier;          // Tag
-    }
-    else {
-        _txDataStruct.dataBufferIndex = 0;
-    }
+    _ringBuffer.push(data & 0xFF); // LSB
+    _ringBuffer.push((data >> 8) & 0xFF); 
+    _ringBuffer.push((data >> 16) & 0xFF); // MSB
+    _ringBuffer.push(identifier); // Tag
 }
 
 // Read out FIFO
-void AFE4950::capture() {
-    if(_captureStatus == RUNNING && _dataReadyFlag) {
-        _dataReadyFlag = false;
+void AFE4950::readFifo()
+{
+    if (_captureStatus == STOPPED) return;
+    
+    uint32_t pointerDiff = readRegister(0x6D) & 0xFF;
+    uint32_t numWordsToRead = (pointerDiff + 1) & 0xFF;
 
-        uint32_t pointerDiff = readRegister(0x6D) & 0xFF;
-        uint32_t numWordsToRead = (pointerDiff + 1) & 0xFF;
+    copyDataInTxBuff(0x000000, 0x02);
+    copyDataInTxBuff(pointerDiff, 0x03);
 
-        _txDataStruct.dataBufferIndex = 0;
-        copyDataInTxBuff(0x000000, 0x02);    // Header to indicate new sampling window
-        copyDataInTxBuff(pointerDiff, 0x03); // POINTER_DIFF value
-
-        while(numWordsToRead != 0) {
-            uint32_t data = readRegister(0xFF);
-            copyDataInTxBuff(data, 0x05);
-            numWordsToRead--;
-        }
-        _dataAvailable = true;
+    while(numWordsToRead != 0)
+    {
+        uint32_t data = readRegister(0xFF);
+        copyDataInTxBuff(data, 0x05);
+        numWordsToRead--;
     }
-}
-
-// Get number of bytes to be sent in buffer
-size_t AFE4950::getBytesToSend() {
-    return _txDataStruct.dataBufferIndex;
-}
-
-// Get status of data reading
-bool AFE4950::ready() {
-    capture();
-    return _dataAvailable;
-}
-
-// When FIFO is readed out return data available
-const uint8_t* AFE4950::getData() {
-    _dataAvailable = false;
-    return _txDataStruct.dataBuffer;
 }

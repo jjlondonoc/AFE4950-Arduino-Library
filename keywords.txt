@@ -6,44 +6,47 @@
 # Datatypes (KEYWORD1)
 #######################################
 
-AFE4950	KEYWORD1	AFE4950
-Page    KEYWORD1	Page
-Mode    KEYWORD1	Mode
-CaptureStatus KEYWORD1	CaptureStatus
-TxDataStruct KEYWORD1  TxDataStruct
-Register	KEYWORD1	Register
+AFE4950    KEYWORD1    AFE4950
+Page       KEYWORD1    Page
+Mode       KEYWORD1    Mode
+CaptureStatus KEYWORD1 CaptureStatus
+Register   KEYWORD1    Register
+CircularBuffer KEYWORD1 CircularBuffer
 
 #######################################
 # Methods and Functions (KEYWORD2)
 #######################################
 
-configure	KEYWORD2
-enableCapture	KEYWORD2
-disableCapture	KEYWORD2
-getBytesToSend	KEYWORD2
-ready	KEYWORD2
-getData	KEYWORD2
-switchPage	KEYWORD2
-switchReadWriteMode	KEYWORD2
-writeSPI	KEYWORD2
-readSPI	KEYWORD2
-writeRegister	KEYWORD2
-readRegister	KEYWORD2
-validateRegisters	KEYWORD2
-fifoConfig	KEYWORD2
-softwareReset	KEYWORD2
-reset	KEYWORD2
-dataReadyISR	KEYWORD2
-copyDataInTxBuff	KEYWORD2
-capture	KEYWORD2
+configure        KEYWORD2
+enableCapture    KEYWORD2
+disableCapture   KEYWORD2
+availableBytes   KEYWORD2
+readByte         KEYWORD2
+readBytes        KEYWORD2
+clear            KEYWORD2
+switchPage       KEYWORD2
+switchReadWriteMode KEYWORD2
+writeSPI         KEYWORD2
+readSPI          KEYWORD2
+writeRegister    KEYWORD2
+readRegister     KEYWORD2
+validateRegisters KEYWORD2
+fifoConfig       KEYWORD2
+softwareReset    KEYWORD2
+reset            KEYWORD2
+dataReadyISR     KEYWORD2
+copyDataInTxBuff KEYWORD2
+readFifo         KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
 #######################################
 
-page0	LITERAL1
-page1	LITERAL1
-write	LITERAL1
-read	LITERAL1
-STOPPED	LITERAL1
-RUNNING	LITERAL1
+page0      LITERAL1
+page1      LITERAL1
+write      LITERAL1
+read       LITERAL1
+STOPPED    LITERAL1
+RUNNING    LITERAL1
+SPI_FREQ   LITERAL1
+RING_BUFFER_SIZE LITERAL1
